@@ -1,3 +1,4 @@
+
 import { HttpService } from '@nestjs/axios';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { AxiosResponse } from 'axios';
@@ -13,7 +14,7 @@ export class AuthService {
     // Autenticar usuario
 
     async login(username: string, password: string): Promise<AxiosResponse>{
-        const url = `${this.apiUrl}initSession`;
+        const url = `${this.apiUrl}/initSession`;
 
         try {
             const response = await firstValueFrom(
@@ -39,7 +40,7 @@ export class AuthService {
     // Nuevo método para obtener la información de la sesion con Bearer Token
     async getUserInfo(sessionToken: string): Promise<AxiosResponse> {
         
-        const url = `${this.apiUrl}getMyProfiles`; // Endpoint de GLPI para obtener la información del usuario
+        const url = `${this.apiUrl}/getMyProfiles`; // Endpoint de GLPI para obtener la información del usuario
         
         try {
           const response = await firstValueFrom(
@@ -91,36 +92,45 @@ export class AuthService {
 
    
     console.log('campos DTO', createTicketDto);
+
+    //const ticketData =await {...createTicketDto};
+    //const ticketData = JSON.parse(JSON.stringify(createTicketDto));
+    const ticketData = Object.assign({}, createTicketDto);
     
-    console.log(createTicketDto._users_id_assign);
+    
+    console.log('Propiedad _users_id_assign en ticketData:', ticketData._users_id_assign);
+    console.log('Tipo de _users_id_assign en ticketData:', typeof ticketData._users_id_assign);
+    console.log('Es _users_id_assign un array?', Array.isArray(ticketData._users_id_assign));
+    console.log('Contenido de _users_id_assign:', ticketData._users_id_assign);
      // Construir el payload
+
     const payload = {
       "input": [
         {
-          name: createTicketDto.name,                            // Título del ticket
-          content: createTicketDto.content,                      // Descripción
-          status: createTicketDto.status,                        // Estado
-          type: createTicketDto.type,                            // Tipo
-          urgency: createTicketDto.urgency,                      // Urgencia
-          impact: createTicketDto.impact,                        // Impacto
-          priority: createTicketDto.priority,                    // Prioridad
-          requesttypes_id: createTicketDto.requesttypes_id,      // Origen de las solicitudes
-          itilcategories_id: createTicketDto.itilcategories_id,  // Categoría
-          _users_id_requester: createTicketDto._users_id_requester, // Solicitante
-          _groups_id_assign: createTicketDto._groups_id_assign,  // Grupo asignado
-          _users_id_assign: createTicketDto._users_id_assign,    // Técnico asignado
-          entities_id: createTicketDto.entities_id,              // Entidad de GLPI
-          locations_id: createTicketDto.locations_id,            // Ubicación
-          slas_id_ttr: createTicketDto.slas_id_ttr               // SLA (Tiempo para resolver)
+          "name": ticketData.name ,                            // Título del ticket
+          "content": ticketData.content,                      // Descripción
+          "status": ticketData.status,                        // Estado
+          "type": ticketData.type,                            // Tipo
+          "urgency": ticketData.urgency,                      // Urgencia
+          "impact": ticketData.impact,                        // Impacto
+          "priority": ticketData.priority,                    // Prioridad
+          "requesttypes_id": ticketData.requesttypes_id,      // Origen de las solicitudes
+          "itilcategories_id": ticketData.itilcategories_id,  // Categoría
+          "_users_id_requester": ticketData._users_id_requester ?? [79], // Solicitante
+          "_groups_id_assign": ticketData._groups_id_assign ?? [1],  // Grupo asignado
+          "_users_id_assign": ticketData._users_id_assign ?? [79],    // Técnico asignado
+          "entities_id": ticketData.entities_id,              // Entidad de GLPI
+          "locations_id": ticketData.locations_id,            // Ubicación
+          "slas_id_ttr": ticketData.slas_id_ttr               // SLA (Tiempo para resolver)
         }
       ]
     };
-
+    console.log(ticketData);
     console.log('payload', payload);
     
     try {
       const response = await firstValueFrom(
-        this.httpService.post(url, payload, {
+        this.httpService.post(url, createTicketDto, {
           headers: {
             'App-Token': this.appToken,
             //'Authorization': `Bearer ${sessionToken}`,

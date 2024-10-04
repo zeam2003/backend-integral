@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Headers, HttpException, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Get, Post, Headers, HttpException, HttpStatus, UsePipes, ValidationPipe } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
@@ -36,6 +36,7 @@ export class AuthController {
 
      // Endpoint para crear un nuevo ticket
     @Post('create-ticket')
+    @UsePipes(new ValidationPipe({ transform: true}))
     async createTicket(
         @Headers('Authorization') authHeader: string,
         @Body() createTicketDto: {
@@ -60,7 +61,7 @@ export class AuthController {
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
         throw new HttpException('Authorization header missing or invalid', HttpStatus.UNAUTHORIZED);
         }
-
+        console.log('Datos validados y transformados:', JSON.stringify(createTicketDto));  // Verifica que los datos están validados y transformados correctamente
         const token = authHeader.split(' ')[1]; // Extraer el token de sesión
         
         return await this.authService.createTicket(token, createTicketDto); // Llamar al servicio para crear el ticket
