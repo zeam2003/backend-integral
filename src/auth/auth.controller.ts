@@ -30,7 +30,10 @@ export class AuthController {
         }
 
         const token = authHeader.split(' ')[1]; // Extraer el token
-        return await this.authService.getFullSession(token); // Llamar a getFullSession
+        const userDetails =  await this.authService.getFullSession(token); // Llamar a getFullSession
+
+        console.log(userDetails.data);
+        return userDetails;
     }
 
 

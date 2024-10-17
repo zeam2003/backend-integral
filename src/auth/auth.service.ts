@@ -37,7 +37,7 @@ export class AuthService {
         }
     }
 
-    // Nuevo método para obtener la información de la sesion con Bearer Token
+    // Nuevo método para obtener la información del perfil sesion con Bearer Token
     async getUserInfo(sessionToken: string): Promise<AxiosResponse> {
         
         const url = `${this.apiUrl}/getMyProfiles`; // Endpoint de GLPI para obtener la información del usuario
@@ -77,6 +77,7 @@ export class AuthService {
           },
         }),
       );
+     //console.log(response.data['glpiID']);
       return response.data; // Retornar la información del usuario logueado
     } catch (error) {
       console.error('Error fetching full session info:', error.response ? error.response.data : error.message);
@@ -97,11 +98,7 @@ export class AuthService {
     //const ticketData = JSON.parse(JSON.stringify(createTicketDto));
     const ticketData = Object.assign({}, createTicketDto);
     
-    
-    console.log('Propiedad _users_id_assign en ticketData:', ticketData._users_id_assign);
-    console.log('Tipo de _users_id_assign en ticketData:', typeof ticketData._users_id_assign);
-    console.log('Es _users_id_assign un array?', Array.isArray(ticketData._users_id_assign));
-    console.log('Contenido de _users_id_assign:', ticketData._users_id_assign);
+  
      // Construir el payload
 
     const payload = {
@@ -125,8 +122,7 @@ export class AuthService {
         }
       ]
     };
-    console.log(ticketData);
-    console.log('payload', payload);
+    
     
     try {
       const response = await firstValueFrom(
