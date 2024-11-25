@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Headers, HttpException, HttpStatus, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, Post, Headers, HttpException, HttpStatus, UsePipes, ValidationPipe, Param, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
@@ -34,6 +34,23 @@ export class AuthController {
 
         console.log(userDetails.data);
         return userDetails;
+    }
+
+    // Endpoint para traer la info de un usuario por su ID, nos sirve para traer la imagen de perfil
+    @Get('user-by-id')
+    async getUserById(
+        @Headers('Authorization') sessionToken: string,
+        @Query('id') id: string,
+        ) {
+        if(!sessionToken) {
+            throw new HttpException('Session Token is missing or invalid', HttpStatus.UNAUTHORIZED);
+        }
+        console.log(sessionToken)
+       
+        
+        const userId = await this.authService.getUserById(Number(id), sessionToken);
+       
+        return {userId};
     }
 
 

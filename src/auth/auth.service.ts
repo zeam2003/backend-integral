@@ -3,6 +3,8 @@ import { HttpService } from '@nestjs/axios';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { AxiosResponse } from 'axios';
 import { firstValueFrom } from 'rxjs';
+import { ApiResponse } from './interfaces/auth.interface';
+import { userInfo } from 'os';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +19,7 @@ export class AuthService {
         const url = `${this.apiUrl}/initSession`;
 
         try {
-            const response = await firstValueFrom(
+            const loginResponse = await firstValueFrom(
                 this.httpService.post(
                     url,
                     {},
@@ -31,7 +33,19 @@ export class AuthService {
                 )
             );
             
-            return response.data;
+            //console.log(response.data['session_token']);
+            //const papirulo = await this.getFullSession(response.data['session_token'])
+            //console.log(papirulo.data['glpifriendlyname']);
+            const sessionToken = loginResponse.data['session_token'];
+            const userInfo  = await this.getFullSession(sessionToken);
+           
+           
+            const fullResponse = {
+              sessionToken,
+              ...userInfo
+            }
+
+            return fullResponse;
         } catch (error) {
             throw new HttpException('Login Failed', HttpStatus.UNAUTHORIZED);
         }
@@ -63,28 +77,82 @@ export class AuthService {
     }
 
 
-   // Método para obtener información completa de la sesión
-  async getFullSession(sessionToken: string): Promise<AxiosResponse> {
-    const url = `${this.apiUrl}/getFullSession`; // Endpoint para obtener la sesión completa
+    // Método para obtener información completa de la sesión
+    async getFullSession(sessionToken: string): Promise<any> {
+      const url = `${this.apiUrl}/getFullSession`; // Endpoint para obtener la sesión completa
 
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(url, {
-          headers: {
-            'App-Token': this.appToken,
-            //'Authorization': `Bearer ${sessionToken}`, // Usar el Bearer Token
-            'Session-Token': sessionToken,
+      try {
+        const response: AxiosResponse<ApiResponse> = await firstValueFrom(
+          this.httpService.get(url, {
+            headers: {
+              'App-Token': this.appToken,
+              'Session-Token': sessionToken,
+            }
+          })
+        )
+        
+      const {
+        valid_id,
+        glpi_currenttime,
+        glpi_use_mode,
+        glpiID,
+        glpifriendlyname,
+        glpiname,
+        glpirealname,
+        glpifirstname,
+        glpiactiveprofile
+              
+      } = response.data.session;
+
+        const {name} = glpiactiveprofile;
+        
+        
+        return{
+          valid_id,
+          glpi_currenttime,
+          glpi_use_mode,
+          glpiID,
+          glpifriendlyname,
+          glpiname,
+          glpirealname,
+          glpifirstname,
+          glpiactiveprofile: {
+            name
           },
-        }),
-      );
-     //console.log(response.data['glpiID']);
-      return response.data; // Retornar la información del usuario logueado
-    } catch (error) {
-      console.error('Error fetching full session info:', error.response ? error.response.data : error.message);
-      throw new HttpException('Failed to fetch session info', HttpStatus.UNAUTHORIZED);
+          name
+          
+        }
+        
+      } catch (error) {
+        console.log(error);
+        //console.error('Error fetching full session info:', error.response ? error.response.data : error.message);
+        throw new HttpException('Failed to fetch session info', HttpStatus.UNAUTHORIZED);
+      }
     }
-  }
 
+
+    // Metodo para traer la url de la imagen 
+    async getUserById(userId: number, sessionToken:string): Promise<any> {
+      const url = `${this.apiUrl}User/${userId}`;
+      console.log(sessionToken)
+      try {
+        const response: AxiosResponse<any> = await firstValueFrom(
+          this.httpService.get(url, {
+            headers: {
+              'App-Token': this.appToken,
+              'Session-Token': sessionToken,
+              //'Authorization': `Bearer ${sessionToken}`,
+            },
+            
+          }),
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Error al obtener usuario:', error);
+        throw new Error('No se pudo obtener la información del usuario.');
+      }
+      
+    }
 
    // Método para crear un ticket
    async createTicket(sessionToken: string, createTicketDto: any): Promise<AxiosResponse> {
