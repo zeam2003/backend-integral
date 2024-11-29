@@ -16,6 +16,7 @@ export class AuthService {
     // Autenticar usuario
 
     async login(username: string, password: string): Promise<AxiosResponse>{
+      console.log('recibiendo login', password, username);
         const url = `${this.apiUrl}/initSession`;
 
         try {
@@ -41,10 +42,10 @@ export class AuthService {
            
            
             const fullResponse = {
-              sessionToken,
+              session_token: sessionToken,
               ...userInfo
             }
-
+            console.log('respuesta completa: ', fullResponse);
             return fullResponse;
         } catch (error) {
             throw new HttpException('Login Failed', HttpStatus.UNAUTHORIZED);
