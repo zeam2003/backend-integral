@@ -1,5 +1,7 @@
-import { Body, Controller, Get, Post, Headers, HttpException, HttpStatus, UsePipes, ValidationPipe, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Headers, HttpException, HttpStatus, UsePipes, ValidationPipe, Param, Query, UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { AddTicketNoteDto } from 'src/dto/add_ticket_note.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -87,5 +89,67 @@ export class AuthController {
         return await this.authService.createTicket(token, createTicketDto); // Llamar al servicio para crear el ticket
     }
 
-    
+    // Obtenes todos los tickets de un usuario
+    @Get('my-tickets')
+    async getMyTickets(
+        @Headers('Authorization')
+        authHeader: string,
+        @Query('userId') userId: number,
+        @Query('page') page: number = 1,
+        @Query('limit') limit: number = 10,
+        @Query('startDate') startDate: string,
+        @Query('endDate') endDate: string,
+    ) {
+        if (!authHeader ||!authHeader.startsWith('Bearer ')) {
+            throw new HttpException('Authorization header missing or invalid', HttpStatus.UNAUTHORIZED);
+        }
+
+        const token = authHeader.split(' ')[1];
+        return await this.authService.getMyTickets(token, userId, page, limit, startDate, endDate);
+    }
+
+    //Obtenes un ticket por el ID
+
+    @Get('tickets/:id')
+    async getTicketById(
+        @Headers('Authorization') authHeader: string,
+        @Param('id') ticketId: number,
+    ) {
+        if (!authHeader ||!authHeader.startsWith('Bearer ')) {
+            throw new HttpException('Authorization header missing or invalid', HttpStatus.UNAUTHORIZED);
+        }
+
+        const token = authHeader.split(' ')[1];
+        console.log(ticketId);
+        return await this.authService.getTicketById(token, ticketId);
+    }    
+
+    //Actualizar ticket y subir imagen optativo
+    @Post('tickets/:id/note')
+    @UseInterceptors(FilesInterceptor('files', 10, {  // Cambiado a FilesInterceptor, máximo 10 archivos
+        limits: {
+            fileSize: 5 * 1024 * 1024, // 5MB por archivo
+        },
+        fileFilter: (req, file, cb) => {
+            if (file.mimetype.match(/\/(jpg|jpeg|png|pdf)$/)) {
+                cb(null, true);
+            } else {
+                cb(new HttpException('Formato de archivo no soportado', HttpStatus.BAD_REQUEST), false);
+            }
+        }
+    }))
+    async addTiketNote(
+        @Headers('Authorization') authHeader: string,
+        @Param('id') ticketId: number,
+        @Body() noteData: AddTicketNoteDto,
+        @UploadedFiles() files?: Express.Multer.File[],  // Cambiado a UploadedFiles
+    ) {
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            throw new HttpException('Authorization header missing or invalid', HttpStatus.UNAUTHORIZED);
+        }
+
+        const token = authHeader.split(' ')[1];
+        return await this.authService.addTicketNote(token, ticketId, noteData, files);
+    }
+
 }

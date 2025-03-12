@@ -4,7 +4,9 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { AxiosResponse } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import { ApiResponse } from './interfaces/auth.interface';
-import { userInfo } from 'os';
+import * as sharp from 'sharp';
+import {PDFDocument} from 'pdf-lib';
+import { AddTicketNoteDto } from 'src/dto/add_ticket_note.dto';
 
 @Injectable()
 export class AuthService {
@@ -211,4 +213,227 @@ export class AuthService {
     }
   }
 
+  // Traemos todos los tickets
+  async getMyTickets(
+      sessionToken: string, 
+      userId: number, 
+      page:number, 
+      limit: number = 10, 
+      startDate?: string, 
+      endDate?: string): Promise<any>{
+    const url = `${this.apiUrl}/Ticket`;
+    const start = Math.floor(Math.max(0, (page - 1) * limit));
+    const end = Math.floor(start + limit - 1);
+    console.log(`${startDate} ${endDate}`)
+    try {
+
+      // Get total count first
+      const countResponse = await firstValueFrom(
+        this.httpService.get(`${url}`, {  // Changed from ${url}/count
+          headers: {
+            'App-Token': this.appToken,
+            'Session-Token': sessionToken,
+            'Content-Type': 'application/json',
+          },
+          params: {
+            'is_deleted': 0,
+            'criteria[0][link]': 'AND',
+            'criteria[0][field]': '_users_id_assign',
+            'criteria[0][searchtype]': 'equals',
+            'criteria[0][value]': userId,
+            ...(startDate && {
+              'criteria[1][link]': 'AND',
+              'criteria[1][field]': 'date_mod',
+              'criteria[1][searchtype]': 'greater',
+              'criteria[1][value]': `${startDate} 00:00:00`
+            }),
+            ...(endDate && {
+              'criteria[2][link]': 'AND',
+              'criteria[2][field]': 'date_mod',
+              'criteria[2][searchtype]': 'less',
+              'criteria[2][value]': `${endDate} 23:59:59`
+            }),
+            'only_count': true  // Added to get only the count
+          }
+        })
+      );
+
+
+     
+      // Get tickets with pagination
+      const response = await firstValueFrom(
+      this.httpService.get(url, {
+        headers: {
+          'App-Token': this.appToken,
+          'Session-Token': sessionToken,
+          'Content-Type': 'application/json',
+          'Range': `${start}-${end}`,
+        },
+        params: {
+          'is_deleted': 0,
+          'criteria[0][link]': 'AND',
+          'criteria[0][field]': '_users_id_assign',
+          'criteria[0][searchtype]': 'equals',
+          'criteria[0][value]': userId,
+          ...(startDate && {
+            'criteria[1][link]': 'AND',
+            'criteria[1][field]': 'date_mod',
+            'criteria[1][searchtype]': 'greater',
+            'criteria[1][value]': `${startDate} 00:00:00`
+          }),
+          ...(endDate && {
+            'criteria[2][link]': 'AND',
+            'criteria[2][field]': 'date_mod',
+            'criteria[2][searchtype]': 'less',
+            'criteria[2][value]': `${endDate} 23:59:59`
+          }),
+          'sort': 'date_mod',
+          'order': 'DESC',
+          'expand_dropdowns': true,
+          'get_hateoas': false
+        }
+      }),
+    );
+
+    return {
+      tickets: response.data,
+      paginacion: {
+        paginaActual: parseInt(page.toString()) || 1,  // Removed Number() conversion
+        elementosPorPagina: parseInt(limit.toString()),  // Removed Number() conversion
+        total: Array.isArray(countResponse.data) ? countResponse.data.length : 0  // Changed how we get the count
+      }
+    };
+    } catch (error) {
+      console.error('Error al obtener tickets:', error.response?.data || error);
+      throw new HttpException('Error al obtener tickets', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  //Obetener ticket por ID
+  
+  async getTicketById(sessionToken: string, ticketId: number): Promise<any>
+  {
+    const url = `${this.apiUrl}/Ticket/${ticketId}`;
+    console.log(ticketId);
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(url, {
+          headers: {
+            'App-Token': this.appToken,
+            'Session-Token': sessionToken,
+            'Content-Type': 'application/json',
+          },
+          params: {
+            'expand_dropdowns': true,
+            'with_problems': true,
+            'with_tickets': true,
+            'with_items': true,
+            'with_documents': true
+          }
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      
+      console.error('Error al obtener el ticket:', error.response?.data || error);
+      throw new HttpException(
+          'Error al obtener el ticket', 
+          error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }async compressFile(file: Express.Multer.File): Promise<Buffer> {
+    try {
+        if (file.mimetype.startsWith('image/')) {
+            return await sharp(file.buffer)
+                .resize(1024, 1024, {
+                    fit: 'inside',
+                    withoutEnlargement: true
+                })
+                .jpeg({ quality: 80 })
+                .toBuffer();
+        }
+        
+        if (file.mimetype === 'application/pdf') {
+          const pdfDoc = await PDFDocument.load(file.buffer);
+          const pdfBytes = await pdfDoc.save({
+              useObjectStreams: true,
+              objectsPerTick: 20,
+          });
+          return Buffer.from(pdfBytes);
+      }
+      
+      return file.buffer;
+    } catch (error) {
+        console.error('Error comprimiendo archivo:', error);
+        return file.buffer;
+    }
+}
+
+// Modificar el método addTicketNote
+async addTicketNote(
+    sessionToken: string, 
+    ticketId: number, 
+    noteData: AddTicketNoteDto, 
+    files?: Express.Multer.File[]
+): Promise<any> {
+    const url = `${this.apiUrl}/Ticket/${ticketId}/TicketTask`;
+    
+    try {
+        const taskResponse = await firstValueFrom(
+            this.httpService.post(url, {
+                input: [{
+                    tickets_id: ticketId,
+                    content: noteData.content,
+                    is_private: 0,
+                    actiontime: 0,
+                    users_id_tech: 0,
+                    groups_id_tech: 0
+                }]
+            }, {
+                headers: {
+                    'App-Token': this.appToken,
+                    'Session-Token': sessionToken,
+                    'Content-Type': 'application/json',
+                }
+            })
+        );
+
+        if (files && files.length > 0) {
+            const documentUrl = `${this.apiUrl}/Document`;
+            
+            // Procesar todos los archivos en paralelo
+            await Promise.all(files.map(async (file) => {
+                const compressedBuffer = await this.compressFile(file);
+                const formData = new FormData();
+                formData.append('uploadManifest', JSON.stringify({
+                    input: {
+                        name: file.originalname,
+                        items_id: taskResponse.data[0].id,
+                        itemtype: 'TicketTask'
+                    }
+                }));
+                
+                const blob = new Blob([compressedBuffer], { type: file.mimetype });
+                formData.append('uploadFile', blob, file.originalname);
+
+                return firstValueFrom(
+                    this.httpService.post(documentUrl, formData, {
+                        headers: {
+                            'App-Token': this.appToken,
+                            'Session-Token': sessionToken,
+                            'Content-Type': 'multipart/form-data'
+                        }
+                    })
+                );
+            }));
+        }
+
+        return taskResponse.data;
+    } catch (error) {
+        console.error('Error al agregar tarea al ticket:', error.response?.data || error);
+        throw new HttpException(
+            'Error al agregar tarea al ticket',
+            error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
+}
 }
