@@ -42,15 +42,23 @@
 ### Documentación API
 - Swagger UI disponible en: `/api/v1/docs`
 - Especificación OpenAPI disponible en: `/api/v1/docs-json`
+- DTOs documentados:
+  - LoginDto: Autenticación de usuarios
+  - CreateTicketDto: Creación de tickets
+  - AddTicketNoteDto: Notas y archivos adjuntos
 
 ### Bibliotecas Principales
 - @nestjs/axios
+- @nestjs/swagger
 - sharp
 - pdf-lib
 - rxjs
+- swagger-ui-express
 
 ## Próximos Pasos Sugeridos
 1. Implementar manejo de errores más detallado
 2. Agregar validaciones adicionales
 3. Optimizar el proceso de compresión
 4. Implementar límites de tamaño configurables
+5. Mejorar la documentación de respuestas en Swagger
+6. Agregar ejemplos de uso en la documentación
