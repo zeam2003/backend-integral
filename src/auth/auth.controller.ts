@@ -2,15 +2,30 @@ import { Body, Controller, Get, Post, Headers, HttpException, HttpStatus, UsePip
 import { AuthService } from './auth.service';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { AddTicketNoteDto } from 'src/dto/add_ticket_note.dto';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { LoginDto } from 'src/dto/login.dto';
 
+@ApiTags('authenticación')
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) {};
 
     // login
+    //Para Swagger
+    @ApiOperation({
+        summary: 'Iniciar sesión',})
+    @ApiResponse({
+        status: 201,
+        description: 'Inicio de sesión exitoso',
+        type: String,
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Credenciales inválidas',
+    })
     @Post('login')
-        async login(@Body('username') username: string, @Body('password') password: string){
-            return await this.authService.login(username, password);
+        async login(@Body() loginDto: LoginDto ){
+            return await this.authService.login(loginDto.username, loginDto.password);
         }
     
     //Userinfo
