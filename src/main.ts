@@ -10,8 +10,10 @@ dotenv.config();
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Serve Flutter web build
-  app.useStaticAssets(join(__dirname, '..', 'public', 'flutter_web'));
+  // Configurar ruta específica para Flutter web app
+  app.useStaticAssets(join(__dirname, '..', 'public', 'integral'), {
+    prefix: '/api/v1/integral'
+  });
 
   // CORS configuration (already supports Flutter web requests)
   app.enableCors({

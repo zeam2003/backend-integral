@@ -20,6 +20,14 @@
   - PDFs: Compresión manteniendo calidad
 - Asociación de archivos a tickets
 
+### 4. Integración Flutter Web
+- Servicio de aplicación web Flutter desde NestJS
+- Configuración de rutas específicas:
+  - API REST: `/api/v1`
+  - Documentación Swagger: `/api/v1/docs`
+  - Flutter Web App: `/api/v1/integral`
+- Configuración CORS para comunicación API-Frontend
+
 ## Detalles Técnicos
 
 ### Compresión de Archivos
