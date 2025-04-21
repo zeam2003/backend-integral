@@ -1,8 +1,8 @@
 import { Body, Controller, Get, Post, Headers, HttpException, HttpStatus, UsePipes, ValidationPipe, Param, Query, UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { AddTicketNoteDto } from 'src/dto/add_ticket_note.dto';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { LoginDto } from 'src/dto/login.dto';
 
 @ApiTags('authenticación')
@@ -167,4 +167,40 @@ export class AuthController {
         return await this.authService.addTicketNote(token, ticketId, noteData, files);
     }
 
+    // Verificar si un ticket existe
+    @ApiOperation({
+        summary: 'Verificar existencia de ticket',
+        description: 'Verifica si un ticket existe en el sistema'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Retorna si el ticket existe o no',
+        schema: {
+            type: 'object',
+            properties: {
+                existe: {
+                    type: 'boolean',
+                    example: true,
+                    description: 'Indica si el ticket existe'
+                }
+            }
+        }
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'No autorizado - Token inválido o faltante'
+    })
+    @ApiBearerAuth() // Agregamos esta decoración para indicar que requiere autenticación
+    @Get('tickets/verificar/:id')
+    async verificarTicket(
+        @Headers('Authorization') authHeader: string,
+        @Param('id') ticketId: number
+    ) {
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            throw new HttpException('Token de autorización faltante o inválido', HttpStatus.UNAUTHORIZED);
+        }
+
+        const token = authHeader.split(' ')[1];
+        return await this.authService.verificarTicket(token, ticketId);
+    }
 }

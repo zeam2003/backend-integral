@@ -20,7 +20,17 @@
   - PDFs: Compresión manteniendo calidad
 - Asociación de archivos a tickets
 
-### 4. Integración Flutter Web
+### 4. Gestión de Checks
+- Creación de checks asociados a tickets
+- Registro de detalles por componente
+- Subida de imágenes por componente
+- Procesamiento automático de imágenes:
+  - Nombres únicos mediante UUID
+  - Redimensionamiento a 800px
+  - Compresión JPEG al 80%
+- Actualización de estados y comentarios
+
+### 5. Integración Flutter Web
 - Servicio de aplicación web Flutter desde NestJS
 - Configuración de rutas específicas:
   - API REST: `/api/v1`
@@ -37,6 +47,10 @@
 - PDFs: Usando pdf-lib
   - Optimización de streams
   - Preservación de contenido
+- Imágenes de Checks:
+  - Redimensionamiento a 800px
+  - Optimización JPEG 80%
+  - Almacenamiento en /assets/images/checks
 
 ### Endpoints Implementados
 - POST /api/v1/auth/login
@@ -46,6 +60,10 @@
 - GET /api/v1/auth/my-tickets
 - GET /api/v1/auth/tickets/:id
 - POST /api/v1/auth/tickets/:id/note
+- POST /api/v1/checks
+- POST /api/v1/checks/:checkId/details
+- GET /api/v1/checks/ticket/:ticketId
+- PUT /api/v1/checks/:checkId/details/:componentType
 
 ### Documentación API
 - Swagger UI disponible en: `/api/v1/docs`
@@ -54,6 +72,8 @@
   - LoginDto: Autenticación de usuarios
   - CreateTicketDto: Creación de tickets
   - AddTicketNoteDto: Notas y archivos adjuntos
+  - CreateCheckDto: Creación de checks
+  - CreateCheckDetailDto: Detalles de componentes
 
 ### Bibliotecas Principales
 - @nestjs/axios
@@ -62,6 +82,7 @@
 - pdf-lib
 - rxjs
 - swagger-ui-express
+- uuid
 
 ## Próximos Pasos Sugeridos
 1. Implementar manejo de errores más detallado
@@ -70,3 +91,5 @@
 4. Implementar límites de tamaño configurables
 5. Mejorar la documentación de respuestas en Swagger
 6. Agregar ejemplos de uso en la documentación
+7. Implementar sistema de respaldo de imágenes
+8. Agregar validación de tipos de archivo permitidos

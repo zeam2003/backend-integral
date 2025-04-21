@@ -436,4 +436,25 @@ async addTicketNote(
         );
     }
 }
+async verificarTicket(token: string, ticketId: number): Promise<{ existe: boolean }> {
+  try {
+      const response = await firstValueFrom(
+          this.httpService.get(`${process.env.API_URL}Ticket/${ticketId}`, {
+              headers: {
+                  'App-Token': process.env.GLPI_APP_TOKEN,
+                  'Session-Token': token
+              }
+          })
+      );
+      return { existe: true };
+  } catch (error) {
+      if (error.response && error.response.status === 404) {
+          return { existe: false };
+      }
+      throw new HttpException('Error al verificar el ticket', HttpStatus.INTERNAL_SERVER_ERROR);
+  }
 }
+
+}
+
+   
