@@ -13,6 +13,8 @@ export class CheckController {
     @Post()
     @ApiOperation({ summary: 'Crear nuevo check' })
     @ApiResponse({ status: 201, description: 'Check creado exitosamente' })
+    @ApiResponse({ status: 400, description: 'Datos inválidos' })
+    @ApiResponse({ status: 409, description: 'El check ya existe' })
     @ApiBearerAuth()
     async createCheck(
         @Headers('Authorization') authHeader: string,
@@ -21,15 +23,31 @@ export class CheckController {
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             throw new HttpException('Token de autorización faltante o inválido', HttpStatus.UNAUTHORIZED);
         }
-        const userId = 1; // Temporalmente hardcodeado, después obtendremos del token
-        return await this.checkService.createCheck(createCheckDto, userId);
+        try {
+            console.log('DTO recibido:', createCheckDto);
+            const check = await this.checkService.createCheck(createCheckDto, createCheckDto.glpiID);
+            return {
+                message: 'Check creado exitosamente',
+                data: check
+            };
+        } catch (error) {
+            console.error('Error detallado:', error);
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(
+                `Error al crear el check: ${error.message}`,
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
     }
 
     @Post(':checkId/details')
     @ApiOperation({ summary: 'Agregar múltiples detalles a un check' })
+    @ApiResponse({ status: 201, description: 'Detalles agregados exitosamente' })
+    @ApiResponse({ status: 400, description: 'Datos inválidos' })
+    @ApiResponse({ status: 404, description: 'Check no encontrado' })
     @ApiBearerAuth()
     @UseInterceptors(FileFieldsInterceptor([
-        { name: 'images', maxCount: 10 } // Permitimos hasta 10 imágenes
+        { name: 'images', maxCount: 10 }
     ]))
     async addCheckDetails(
         @Headers('Authorization') authHeader: string,
@@ -40,8 +58,27 @@ export class CheckController {
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             throw new HttpException('Token de autorización faltante o inválido', HttpStatus.UNAUTHORIZED);
         }
-        const createCheckDetailsDto = JSON.parse(details);
-        return await this.checkService.addCheckDetailsWithImages(checkId, createCheckDetailsDto, files?.images || []);
+        try {
+            const createCheckDetailsDto = JSON.parse(details);
+            const savedDetails = await this.checkService.addCheckDetailsWithImages(
+                checkId, 
+                createCheckDetailsDto, 
+                files?.images || []
+            );
+            return {
+                message: 'Detalles agregados exitosamente',
+                data: savedDetails
+            };
+        } catch (error) {
+            if (error instanceof HttpException) throw error;
+            if (error instanceof SyntaxError) {
+                throw new HttpException('Formato JSON inválido', HttpStatus.BAD_REQUEST);
+            }
+            throw new HttpException(
+                'Error al agregar detalles al check',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
     }
 
     @Get('ticket/:ticketId')
@@ -72,17 +109,45 @@ export class CheckController {
 
     @Put(':id/status')
     @ApiOperation({ summary: 'Actualizar estado del check' })
+    @ApiResponse({ status: 200, description: 'Estado del check actualizado exitosamente' })
+    @ApiResponse({ status: 400, description: 'Estado inválido' })
+    @ApiResponse({ status: 404, description: 'Check no encontrado' })
     @ApiBearerAuth()
     async updateCheckStatus(
         @Headers('Authorization') authHeader: string,
         @Param('id') checkId: string,
-        @Body('status') status: string
+        @Body('status') status: string,
+        @Body('userId') userId: number
     ) {
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             throw new HttpException('Token de autorización faltante o inválido', HttpStatus.UNAUTHORIZED);
         }
-        const userId = 1; // Temporalmente hardcodeado, después obtendremos del token
-        return await this.checkService.updateCheckStatus(checkId, status, userId);
+
+        // Validar que el estado sea válido
+        const validStates = ['en_curso', 'en_espera', 'finalizado'];
+        if (!validStates.includes(status)) {
+            throw new HttpException(
+                `Estado inválido. Los estados válidos son: ${validStates.join(', ')}`,
+                HttpStatus.BAD_REQUEST
+            );
+        }
+
+        try {
+            const updatedCheck = await this.checkService.updateCheckStatus(checkId, status, userId);
+            if (!updatedCheck) {
+                throw new HttpException('Check no encontrado', HttpStatus.NOT_FOUND);
+            }
+            return {
+                message: 'Estado del check actualizado exitosamente',
+                data: updatedCheck
+            };
+        } catch (error) {
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(
+                'Error al actualizar el estado del check',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
     }
 
     @Put(':checkId/details/:componentType')

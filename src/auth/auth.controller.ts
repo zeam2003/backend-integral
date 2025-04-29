@@ -203,4 +203,26 @@ export class AuthController {
         const token = authHeader.split(' ')[1];
         return await this.authService.verificarTicket(token, ticketId);
     }
+
+    @Get('activo/buscar')
+    @ApiOperation({ summary: 'Buscar activo por número de inventario' })
+    @ApiResponse({
+        status: 200,
+        description: 'Activo encontrado exitosamente'
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Activo no encontrado'
+    })
+    @ApiBearerAuth()
+    async buscarActivoPorInventario(
+        @Headers('Authorization') authHeader: string,
+        @Query('numeroInventario') numeroInventario: string
+    ) {
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            throw new HttpException('Token de autorización faltante o inválido', HttpStatus.UNAUTHORIZED);
+        }
+        const token = authHeader.split(' ')[1];
+        return await this.authService.buscarActivoPorInventario(token, numeroInventario);
+    }
 }

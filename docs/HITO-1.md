@@ -6,6 +6,10 @@
 - Login de usuarios
 - Manejo de tokens de sesión
 - Obtención de información de usuario y perfiles
+- Búsqueda de activos por número de inventario
+  - Integración con GLPI
+  - Obtención de detalles del equipo
+  - Validación de existencia
 
 ### 2. Gestión de Tickets
 - Creación de tickets
@@ -22,6 +26,9 @@
 
 ### 4. Gestión de Checks
 - Creación de checks asociados a tickets
+  - Validación de tipos permitidos
+  - Generación automática de IDs secuenciales
+  - Control de duplicados por ticket y etapa
 - Registro de detalles por componente
 - Subida de imágenes por componente
 - Procesamiento automático de imágenes:
@@ -56,6 +63,7 @@
 - POST /api/v1/auth/login
 - GET /api/v1/auth/user-info
 - GET /api/v1/auth/user-details
+- GET /api/v1/auth/activo/buscar
 - POST /api/v1/auth/create-ticket
 - GET /api/v1/auth/my-tickets
 - GET /api/v1/auth/tickets/:id

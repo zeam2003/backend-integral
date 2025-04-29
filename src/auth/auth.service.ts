@@ -455,6 +455,64 @@ async verificarTicket(token: string, ticketId: number): Promise<{ existe: boolea
   }
 }
 
+
+async buscarActivoPorInventario(sessionToken: string, numeroInventario: string): Promise<any> {
+    const url = `${this.apiUrl}/search/Computer`;
+    
+    try {
+        const response = await firstValueFrom(
+            this.httpService.get(url, {
+                headers: {
+                    'App-Token': this.appToken,
+                    'Session-Token': sessionToken,
+                },
+                params: {
+                    'is_deleted': 0,
+                    'criteria[0][link]': 'AND',
+                    'criteria[0][field]': 5, // ID del campo otherserial en GLPI
+                    'criteria[0][searchtype]': 'contains',
+                    'criteria[0][value]': numeroInventario,
+                    'expand_dropdowns': true,
+                    'get_hateoas': false,
+                    'forcedisplay[0]': 1,  // ID
+                    'forcedisplay[1]': 2,  // Nombre
+                    'forcedisplay[2]': 5,  // Número de serie
+                    'forcedisplay[3]': 6   // Número de inventario
+                }
+            })
+        );
+
+        if (response.data.count === 0) {
+            throw new HttpException(
+                'No se encontró ningún activo con ese número de inventario',
+                HttpStatus.NOT_FOUND
+            );
+        }
+
+        // Transformar la respuesta en un formato más amigable
+        const activo = response.data.data[0];
+        return {
+            nombre: activo['1'],
+            id: activo['2'],
+            numeroSerie: activo['5'],
+            numeroInventario: activo['6'],
+            ubicacion: activo['80'],
+            totalEncontrados: response.data.count
+        };
+    } catch (error) {
+        console.error('Error al buscar activo:', error.response?.data || error);
+        throw new HttpException(
+            error.response?.status === 404 
+                ? 'No se encontró ningún activo con ese número de inventario'
+                : 'Error al buscar el activo en GLPI',
+            error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
 }
+}
+
+
+
+
 
    

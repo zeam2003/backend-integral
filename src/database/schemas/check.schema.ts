@@ -7,13 +7,33 @@ export enum CheckStatus {
   FINALIZADO = 'finalizado'
 }
 
+export enum CheckType {
+  LAPTOP = 'laptop',
+  DESKTOP = 'desktop',
+  MONITOR = 'monitor',
+  OTRO = 'otro'
+}
+
 @Schema({ timestamps: true })
 export class Check extends Document {
-  @Prop({ unique: true })
+  @Prop({ required: true, unique: true, auto: true })
   checkId: number;
 
   @Prop({ required: true })
   ticketId: number;
+
+  @Prop({ required: true })
+  glpiID: number;
+
+  @Prop()
+  title?: string;
+
+  @Prop({ 
+    type: String,
+    enum: CheckType,
+    required: true 
+  })
+  type: CheckType;
 
   @Prop({ required: true })
   createdBy: number;

@@ -1,7 +1,7 @@
 import { Injectable, HttpStatus, HttpException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Check } from '../database/schemas/check.schema';
+import { Check, CheckStatus, CheckType } from '../database/schemas/check.schema';
 import { CheckDetail } from '../database/schemas/check-detail.schema';
 import { CreateCheckDto } from '../dto/create_check.dto';
 import { CreateCheckDetailDto } from '../dto/create_check_detail.dto';
@@ -17,52 +17,104 @@ export class CheckService {
     ) {}
 
     async createCheck(createCheckDto: CreateCheckDto, userId: number) {
-        const createdCheck = new this.checkModel({
-            ...createCheckDto,
-            createdBy: userId,
-            modifiedBy: userId
-        });
-        return await createdCheck.save();
-    }
+        try {
+            // Validar que el tipo sea válido
+            if (!Object.values(CheckType).includes(createCheckDto.type as CheckType)) {
+                throw new HttpException(
+                    `Tipo de check inválido: ${createCheckDto.type}. Tipos válidos: ${Object.values(CheckType).join(', ')}`,
+                    HttpStatus.BAD_REQUEST
+                );
+            }
 
-    async addCheckDetails(checkId: string, createCheckDetailsDto: CreateCheckDetailDto[]) {
-        const details = await Promise.all(
-            createCheckDetailsDto.map(detail => {
-                const createdDetail = new this.checkDetailModel({
-                    checkId: Number(checkId),  // Convertir a número
-                    ...detail
-                });
-                return createdDetail.save();
-            })
-        );
-        return details;
+            const existingCheck = await this.checkModel.findOne({ 
+                ticketId: createCheckDto.ticketId,
+                stage: createCheckDto.stage 
+            });
+
+            if (existingCheck) {
+                throw new HttpException(
+                    `Ya existe un check para el ticket ${createCheckDto.ticketId} en la etapa ${createCheckDto.stage}`,
+                    HttpStatus.CONFLICT
+                );
+            }
+
+            // Obtener el último checkId
+            const lastCheck = await this.checkModel.findOne().sort({ checkId: -1 });
+            const nextCheckId = lastCheck ? lastCheck.checkId + 1 : 1;
+
+            const createdCheck = new this.checkModel({
+                ...createCheckDto,
+                checkId: nextCheckId,
+                createdBy: userId,
+                modifiedBy: userId,
+                status: createCheckDto.status || CheckStatus.EN_CURSO
+            });
+
+            const savedCheck = await createdCheck.save();
+            console.log('Check creado exitosamente:', savedCheck);
+            return savedCheck;
+        } catch (error) {
+            console.error('Error detallado al crear check:', error);
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(
+                `Error al crear el check: ${error.message}`,
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
     }
 
     async addCheckDetailsWithImages(checkId: string, createCheckDetailsDto: CreateCheckDetailDto[], files: Express.Multer.File[]) {
-        const details = await Promise.all(
-            createCheckDetailsDto.map(async (detail, index) => {
-                // Tomamos la imagen en el mismo orden que los detalles
-                const file = files[index];
-                let imageData = {};
-                
-                if (file) {
-                    try {
-                        imageData = await this.imageService.saveImage(file);
-                        console.log(`Imagen procesada para ${detail.componentType}:`, imageData);
-                    } catch (error) {
-                        console.error(`Error procesando imagen para ${detail.componentType}:`, error);
+        try {
+            const check = await this.checkModel.findOne({ checkId: Number(checkId) });
+            if (!check) {
+                throw new HttpException('Check no encontrado', HttpStatus.NOT_FOUND);
+            }
+
+            const details = await Promise.all(
+                createCheckDetailsDto.map(async (detail, index) => {
+                    const existingDetail = await this.checkDetailModel.findOne({
+                        checkId: Number(checkId),
+                        componentType: detail.componentType
+                    });
+
+                    if (existingDetail) {
+                        throw new HttpException(
+                            `Ya existe un detalle para el componente ${detail.componentType}`,
+                            HttpStatus.CONFLICT
+                        );
                     }
-                }
-    
-                const createdDetail = new this.checkDetailModel({
-                    checkId: Number(checkId),
-                    ...detail,
-                    ...imageData
-                });
-                return createdDetail.save();
-            })
-        );
-        return details;
+
+                    const file = files[index];
+                    let imageData = {};
+                    
+                    if (file) {
+                        try {
+                            imageData = await this.imageService.saveImage(file);
+                        } catch (error) {
+                            console.error(`Error al procesar imagen para ${detail.componentType}:`, error);
+                            throw new HttpException(
+                                `Error al procesar la imagen para ${detail.componentType}`,
+                                HttpStatus.INTERNAL_SERVER_ERROR
+                            );
+                        }
+                    }
+        
+                    const createdDetail = new this.checkDetailModel({
+                        checkId: Number(checkId),
+                        ...detail,
+                        ...imageData
+                    });
+                    return createdDetail.save();
+                })
+            );
+            return details;
+        } catch (error) {
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(
+                'Error al agregar detalles al check',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
     }
 
     async getCheckById(checkId: string) {
