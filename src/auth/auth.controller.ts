@@ -225,4 +225,29 @@ export class AuthController {
         const token = authHeader.split(' ')[1];
         return await this.authService.buscarActivoPorInventario(token, numeroInventario);
     }
+
+    @Get('tickets/:id/items')
+    @ApiOperation({
+        summary: 'Obtener items asociados a un ticket',
+        description: 'Obtiene todos los items asociados a un ticket específico'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Items del ticket obtenidos exitosamente'
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Ticket no encontrado o sin items asociados'
+    })
+    @ApiBearerAuth()
+    async getTicketItems(
+        @Headers('Authorization') authHeader: string,
+        @Param('id') ticketId: number
+    ) {
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            throw new HttpException('Token de autorización faltante o inválido', HttpStatus.UNAUTHORIZED);
+        }
+        const token = authHeader.split(' ')[1];
+        return await this.authService.getTicketItems(token, ticketId);
+    }
 }

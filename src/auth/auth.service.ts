@@ -7,6 +7,7 @@ import { ApiResponse } from './interfaces/auth.interface';
 import * as sharp from 'sharp';
 import {PDFDocument} from 'pdf-lib';
 import { AddTicketNoteDto } from 'src/dto/add_ticket_note.dto';
+import { TicketItemResponse } from 'src/interfaces/ticket-item.interface';
 
 @Injectable()
 export class AuthService {
@@ -505,6 +506,37 @@ async buscarActivoPorInventario(sessionToken: string, numeroInventario: string):
             error.response?.status === 404 
                 ? 'No se encontró ningún activo con ese número de inventario'
                 : 'Error al buscar el activo en GLPI',
+            error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
+}
+async getTicketItems(sessionToken: string, ticketId: number): Promise<TicketItemResponse> {
+    const url = `${this.apiUrl}/Ticket/${ticketId}/Item_Ticket`;
+    
+    try {
+        const response = await firstValueFrom(
+            this.httpService.get(url, {
+                headers: {
+                    'App-Token': this.appToken,
+                    'Session-Token': sessionToken,
+                    'Content-Type': 'application/json',
+                },
+                params: {
+                    'expand_dropdowns': true
+                }
+            })
+        );
+
+        return {
+            items: response.data,
+            total: response.data.length
+        };
+    } catch (error) {
+        console.error('Error al obtener items del ticket:', error.response?.data || error);
+        throw new HttpException(
+            error.response?.status === 404 
+                ? 'No se encontraron items asociados al ticket'
+                : 'Error al obtener items del ticket',
             error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
         );
     }
