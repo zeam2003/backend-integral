@@ -546,6 +546,7 @@ async validateToken(sessionToken: string): Promise<any> {
     const url = `${this.apiUrl}/getFullSession`;
     
     try {
+        // Verificamos si el token actual es válido
         const response = await firstValueFrom(
             this.httpService.get(url, {
                 headers: {
@@ -555,29 +556,41 @@ async validateToken(sessionToken: string): Promise<any> {
             })
         );
 
-        // Si la petición es exitosa, el token es válido
-        // Renovamos la sesión y devolvemos la información actualizada
-        const renewUrl = `${this.apiUrl}/initSession`;
-        const renewResponse = await firstValueFrom(
-            this.httpService.get(renewUrl, {
-                headers: {
-                    'App-Token': this.appToken,
-                    'Session-Token': sessionToken,
-                }
-            })
-        );
-
+        // Si el token es válido, devolvemos la información simplificada
         return {
             valid: true,
-            session_token: renewResponse.data.session_token,
-            user: response.data
+            session_token: sessionToken,
+            valid_id: response.data.session.valid_id
         };
+
     } catch (error) {
-        // Si hay un error, el token no es válido
-        return {
-            valid: false,
-            message: 'Token inválido o expirado'
-        };
+        // Si el token no es válido, intentamos obtener uno nuevo
+        try {
+            const renewUrl = `${this.apiUrl}/initSession`;
+            const renewResponse = await firstValueFrom(
+                this.httpService.get(renewUrl, {
+                    headers: {
+                        'App-Token': this.appToken,
+                        'Session-Token': sessionToken,
+                    }
+                })
+            );
+
+            // Si se renovó exitosamente, devolvemos el nuevo token
+            return {
+                valid: true,
+                session_token: renewResponse.data.session_token,
+                valid_id: renewResponse.data.valid_id
+            };
+
+        } catch (renewError) {
+            // Si no se pudo renovar, devolvemos error
+            console.error('Error renovando token:', renewError.response?.data || renewError);
+            return {
+                valid: false,
+                message: 'Token inválido o expirado'
+            };
+        }
     }
 }
 }

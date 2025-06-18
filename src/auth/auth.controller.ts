@@ -253,12 +253,12 @@ export class AuthController {
 
     @Post('validate-token')
     @ApiOperation({
-        summary: 'Validar y renovar token de sesión',
-        description: 'Valida un token existente y devuelve uno nuevo si es válido'
+        summary: 'Validar token de sesión',
+        description: 'Valida un token existente y retorna la información del usuario'
     })
     @ApiResponse({
         status: 200,
-        description: 'Token válido y renovado exitosamente'
+        description: 'Token válido'
     })
     @ApiResponse({
         status: 401,
