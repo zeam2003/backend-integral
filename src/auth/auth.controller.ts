@@ -250,4 +250,32 @@ export class AuthController {
         const token = authHeader.split(' ')[1];
         return await this.authService.getTicketItems(token, ticketId);
     }
+
+    @Post('validate-token')
+    @ApiOperation({
+        summary: 'Validar y renovar token de sesión',
+        description: 'Valida un token existente y devuelve uno nuevo si es válido'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Token válido y renovado exitosamente'
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Token inválido o expirado'
+    })
+    async validateToken(@Headers('Authorization') authHeader: string) {
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            throw new HttpException('Token de autorización faltante o inválido', HttpStatus.UNAUTHORIZED);
+        }
+    
+        const token = authHeader.split(' ')[1];
+        const result = await this.authService.validateToken(token);
+    
+        if (!result.valid) {
+            throw new HttpException(result.message, HttpStatus.UNAUTHORIZED);
+        }
+    
+        return result;
+    }
 }

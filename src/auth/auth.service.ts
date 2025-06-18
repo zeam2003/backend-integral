@@ -541,6 +541,45 @@ async getTicketItems(sessionToken: string, ticketId: number): Promise<TicketItem
         );
     }
 }
+
+async validateToken(sessionToken: string): Promise<any> {
+    const url = `${this.apiUrl}/getFullSession`;
+    
+    try {
+        const response = await firstValueFrom(
+            this.httpService.get(url, {
+                headers: {
+                    'App-Token': this.appToken,
+                    'Session-Token': sessionToken,
+                }
+            })
+        );
+
+        // Si la petición es exitosa, el token es válido
+        // Renovamos la sesión y devolvemos la información actualizada
+        const renewUrl = `${this.apiUrl}/initSession`;
+        const renewResponse = await firstValueFrom(
+            this.httpService.get(renewUrl, {
+                headers: {
+                    'App-Token': this.appToken,
+                    'Session-Token': sessionToken,
+                }
+            })
+        );
+
+        return {
+            valid: true,
+            session_token: renewResponse.data.session_token,
+            user: response.data
+        };
+    } catch (error) {
+        // Si hay un error, el token no es válido
+        return {
+            valid: false,
+            message: 'Token inválido o expirado'
+        };
+    }
+}
 }
 
 
